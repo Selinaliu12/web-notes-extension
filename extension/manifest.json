@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "網頁筆記",
+  "version": "0.1.0",
+  "description": "在任何網頁上螢光標記、寫註解與整頁筆記,之後集中複習。資料只存在本機。",
+  "permissions": ["storage", "activeTab"],
+  "action": {
+    "default_title": "網頁筆記",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" }
+  },
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "web_accessible_resources": [
+    { "resources": ["review.html"], "matches": ["<all_urls>"] }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
