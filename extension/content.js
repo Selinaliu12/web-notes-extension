@@ -144,8 +144,10 @@
   .fab { position: fixed; right: 16px; bottom: 16px; z-index: 2147483646; width: 40px; height: 40px; border-radius: 50%;
          border: 1px solid var(--line); background: var(--bg); color: var(--fg); box-shadow: 0 2px 10px #0003; font-size: 18px; opacity: .55; transition: opacity .15s; }
   .fab:hover { opacity: 1; }
-  .selbtn { position: fixed; z-index: 2147483647; display: none; padding: 6px 12px; border-radius: 999px; border: 0;
-            background: #1d1d1f; color: #fff; box-shadow: 0 2px 10px #0004; font-size: 13px; }
+  .selbtn { position: fixed; z-index: 2147483647; display: none; padding: 3px; gap: 2px; border-radius: 999px;
+            background: #1d1d1f; box-shadow: 0 2px 10px #0004; }
+  .selbtn button { padding: 5px 12px; border-radius: 999px; border: 0; background: transparent; color: #fff; font-size: 13px; }
+  .selbtn button:hover { background: #fff3; }
   .pop { position: fixed; z-index: 2147483647; display: none; width: 300px; padding: 12px; border-radius: 12px; background: var(--bg);
          border: 1px solid var(--line); box-shadow: 0 8px 30px #0003; }
   .quote { font-size: 12px; color: var(--mut); border-left: 3px solid var(--line); padding-left: 8px; margin-bottom: 8px;
@@ -177,7 +179,7 @@
 </style>
 <div class="ui">
   <button class="fab" title="網頁筆記">✎</button>
-  <button class="selbtn">✎ 標記 / 筆記</button>
+  <div class="selbtn"><button class="qh">🖍 標記</button><button class="qc">💬 註解</button></div>
   <div class="pop">
     <div class="quote"></div>
     <textarea rows="3" placeholder="寫下你的想法、疑問、重點…"></textarea>
@@ -237,19 +239,23 @@
   const closeEditor = () => { pop.style.display = 'none'; };
 
   pop.querySelector('.cancel').onclick = closeEditor;
+  async function createHighlight(s, comment, tags, color) {
+    const data = await load();
+    const h = { id: uid(), url: PAGE, title: document.title, quote: s.quote, prefix: s.prefix, suffix: s.suffix,
+                comment, tags, color, createdAt: Date.now() };
+    data.highlights.push(h);
+    wrapRange(s.start, s.end, h.id, h.color); // wrap first so the onChanged sync doesn't wrap it twice
+    await save({ highlights: data.highlights });
+    getSelection().removeAllRanges();
+  }
+
   pop.querySelector('.save').onclick = async () => {
     const comment = ta.value.trim();
     const tags = parseTags(tagsIn.value);
-    const data = await load();
     if (state.mode === 'new') {
-      const s = state.sel;
-      const h = { id: uid(), url: PAGE, title: document.title, quote: s.quote, prefix: s.prefix, suffix: s.suffix,
-                  comment, tags, color: state.color, createdAt: Date.now() };
-      data.highlights.push(h);
-      wrapRange(s.start, s.end, h.id, h.color); // wrap first so the onChanged sync doesn't wrap it twice
-      await save({ highlights: data.highlights });
-      getSelection().removeAllRanges();
+      await createHighlight(state.sel, comment, tags, state.color);
     } else {
+      const data = await load();
       const h = data.highlights.find((x) => x.id === state.id);
       if (h) {
         Object.assign(h, { comment, tags, color: state.color });
@@ -278,14 +284,21 @@
       if (!s) { selbtn.style.display = 'none'; return; }
       pending = s;
       selbtn.style.display = 'block';
-      placeNear(selbtn, s.rect, 110, 40);
+      placeNear(selbtn, s.rect, 150, 40);
     }, 10);
   };
   document.addEventListener('mouseup', checkSelection);
   document.addEventListener('keyup', (e) => { if (e.key === 'Shift' || e.key.startsWith('Arrow')) checkSelection(e); });
   document.addEventListener('scroll', () => { selbtn.style.display = 'none'; }, { passive: true });
   selbtn.addEventListener('mousedown', (e) => e.preventDefault());
-  selbtn.onclick = () => pending && openEditor('new', pending.rect, { sel: pending, quote: pending.quote });
+  // 🖍 標記: highlight immediately, no editor. 💬 註解: open the editor (saving also highlights).
+  selbtn.querySelector('.qh').onclick = async () => {
+    if (!pending) return;
+    selbtn.style.display = 'none';
+    await createHighlight(pending, '', [], 'yellow');
+    renderSide();
+  };
+  selbtn.querySelector('.qc').onclick = () => pending && openEditor('new', pending.rect, { sel: pending, quote: pending.quote });
 
   document.addEventListener('mousedown', (e) => { if (!inUI(e) && !e.target.closest?.('mark.fn-hl')) closeEditor(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeEditor(); });
