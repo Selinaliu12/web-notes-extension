@@ -37,6 +37,11 @@
   .meta .del:hover { color: #d93025; }
   .empty { text-align: center; color: var(--mut); padding: 60px 0; }
   mark { background: #fff176; color: #000; border-radius: 3px; }
+  details { margin-top: 8px; } summary { cursor: pointer; color: var(--acc); font-size: 14px; }
+  .rtext { white-space: pre-wrap; font-size: 14px; margin-top: 6px; }
+  .rtext .zh { color: var(--acc); }
+  .acts { display: flex; gap: 12px; font-size: 13px; margin-top: 8px; }
+  .acts a, .acts button { color: var(--acc); background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -44,6 +49,7 @@
   <h1>📚 複習筆記</h1>
   <div class="bar">
     <input type="search" id="q" placeholder="搜尋標記文字、註解、標題…">
+    <select id="type"><option value="all">全部</option><option value="hl">標記</option><option value="rec">錄音</option></select>
     <select id="sort"><option value="new">最新在前</option><option value="old">最舊在前</option></select>
     <button id="export">匯出 Markdown</button>
     <button id="backup">備份 JSON</button>
