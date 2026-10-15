@@ -10,11 +10,6 @@ document.getElementById('side').onclick = async () => {
   }
 };
 
-document.getElementById('rec').onclick = async () => {
-  await api.windows.create({ url: api.runtime.getURL('record.html'), type: 'popup', width: 480, height: 820 });
-  window.close();
-};
-
 document.getElementById('review').onclick = async () => {
   await api.tabs.create({ url: api.runtime.getURL('review.html') });
   window.close();
