@@ -3,6 +3,7 @@ const COLORS = { yellow: '#fff176', green: '#a5d6a7', blue: '#90caf9', pink: '#f
 const $ = (id) => document.getElementById(id);
 let data = { highlights: [], pages: {} };
 const activeTags = new Set();
+const picked = new Set(); // urls selected for sharing
 
 const load = () => api.storage.local.get({ highlights: [], pages: {} });
 const fmt = (t) => new Date(t).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -67,6 +68,7 @@ function tagSpans(tags) {
 
 function render() {
   renderChips();
+  syncShare();
   const list = $('list');
   list.textContent = '';
   const gs = groups();
@@ -78,9 +80,18 @@ function render() {
   }
   for (const g of gs) {
     const card = el('div', { className: 'art' });
+    const pick = el('input', { type: 'checkbox', checked: picked.has(g.url), title: '選取以分享' });
+    pick.onchange = () => { pick.checked ? picked.add(g.url) : picked.delete(g.url); syncShare(); };
+    const linkBtn = el('button', { textContent: '🔗 複製連結', title: '對方需安裝本擴充功能,用連結開啟原文即可匯入' });
+    linkBtn.onclick = async () => {
+      const link = await Share.makeLink(articleOf(g));
+      try { await navigator.clipboard.writeText(link); linkBtn.textContent = '已複製'; } catch { prompt('請複製這個連結:', link); }
+      setTimeout(() => { linkBtn.textContent = '🔗 複製連結'; }, 1500);
+    };
+    Object.assign(linkBtn.style, { border: '0', background: 'none', color: 'var(--acc)', cursor: 'pointer', font: 'inherit', padding: '0' });
     card.append(
-      el('h2', {}, el('a', { href: g.url, target: '_blank', rel: 'noopener', textContent: g.title })),
-      el('div', { className: 'host', textContent: `${hostOf(g.url)} · ${fmt(g.time)}` }),
+      el('h2', {}, pick, ' ', el('a', { href: g.url, target: '_blank', rel: 'noopener', textContent: g.title })),
+      el('div', { className: 'host', textContent: `${hostOf(g.url)} · ${fmt(g.time)} ` }, linkBtn),
     );
     if (g.page) {
       const pn = el('div', { className: 'pn' }, el('b', { textContent: '整頁筆記' }), g.page.note || '');
@@ -119,6 +130,17 @@ function render() {
     list.append(card);
   }
 }
+
+const articleOf = (g) => ({ url: g.url, title: g.title, page: g.page, highlights: g.hls });
+function syncShare() {
+  $('share').textContent = `📤 分享所選 (${picked.size})`;
+  $('share').disabled = picked.size === 0;
+}
+$('share').onclick = async () => {
+  const arts = groups().filter((g) => picked.has(g.url)).map(articleOf);
+  if (!arts.length) return;
+  Share.download(`閱讀筆記-${new Date().toISOString().slice(0, 10)}`, await Share.buildHtml(arts));
+};
 
 function toMarkdown() {
   const out = ['# 網頁筆記匯出', `> 匯出日期:${fmt(Date.now())}`, ''];

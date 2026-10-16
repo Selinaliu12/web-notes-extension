@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "網頁筆記",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "在任何網頁上螢光標記、寫註解與整頁筆記,之後集中複習。資料只存在本機。",
   "permissions": ["storage", "activeTab"],
   "action": {
@@ -16,7 +16,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["share.js", "content.js"],
       "run_at": "document_idle"
     }
   ]

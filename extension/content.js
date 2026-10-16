@@ -175,6 +175,8 @@
   .item .c { font-size: 13px; margin-top: 4px; color: var(--mut); white-space: pre-wrap; }
   .tag { display: inline-block; font-size: 11px; color: var(--acc); margin-right: 6px; }
   .empty { color: var(--mut); font-size: 13px; }
+  .banner { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: none; max-width: min(560px, 92vw); padding: 12px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 8px 30px #0004; font-size: 14px; }
+  .banner .row { margin-top: 8px; }
   .x { border: 0; background: none; color: var(--mut); font-size: 18px; }
 </style>
 <div class="ui">
@@ -189,6 +191,7 @@
       <button class="btn del">刪除</button><button class="btn cancel">取消</button><button class="btn pri save">儲存</button>
     </div>
   </div>
+  <div class="banner"><div class="msg"></div><div class="row"><button class="btn pri imp">匯入到我的筆記</button><button class="btn skip">略過</button></div></div>
   <aside class="side">
     <header><span style="flex:1">網頁筆記</span><button class="x close">×</button></header>
     <div class="body">
@@ -197,7 +200,10 @@
       <input type="text" class="pagetags" placeholder="本頁標籤" style="margin-top:8px">
       <h4>本頁標記 <span class="count"></span></h4>
       <div class="list"></div>
-      <div class="row"><button class="btn review">開啟複習頁</button></div>
+      <h4>分享</h4>
+      <div class="row"><button class="btn sharehtml">📤 下載分享頁</button><button class="btn sharelink">🔗 複製分享連結</button></div>
+      <div class="empty sharemsg" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:14px"><button class="btn review">開啟複習頁</button></div>
     </div>
   </aside>
 </div>`;
@@ -356,9 +362,65 @@
     }
   }
 
+  // ---------- sharing ----------
+  async function currentArticle() {
+    const { highlights, pages } = await load();
+    const mine = highlights.filter((h) => h.url === PAGE).sort((a, b) => a.createdAt - b.createdAt);
+    const page = pages[PAGE];
+    if (!mine.length && !(page && (page.note || page.tags?.length))) return null;
+    return { url: PAGE, title: document.title, page: page || null, highlights: mine };
+  }
+  const shareMsg = (t) => { $('.sharemsg').textContent = t; };
+  $('.sharehtml').onclick = async () => {
+    const a = await currentArticle();
+    if (!a) return shareMsg('這頁還沒有標記或筆記。');
+    Share.download((document.title || 'notes') + '-筆記', await Share.buildHtml([a]));
+    shareMsg('已下載分享頁,可以用 LINE 或 Email 傳給別人。');
+  };
+  $('.sharelink').onclick = async () => {
+    const a = await currentArticle();
+    if (!a) return shareMsg('這頁還沒有標記或筆記。');
+    const link = await Share.makeLink(a);
+    try { await navigator.clipboard.writeText(link); } catch { prompt('請複製這個連結:', link); }
+    shareMsg(`已複製分享連結(${link.length} 字元)。對方需先安裝「網頁筆記」擴充功能,用連結開啟原文就能匯入。` + (link.length > 8000 ? ' 注意:連結偏長,部分通訊軟體可能截斷,建議改傳分享頁。' : ''));
+  };
+
+  // Opening a shared link: offer to import the shared highlights/notes into this browser.
+  const banner = $('.banner');
+  async function offerImport() {
+    const d = await Share.parseHash(location.hash);
+    if (!d || (!d.highlights.length && !d.note)) return;
+    banner.querySelector('.msg').textContent = `有人分享了 ${d.highlights.length} 則標記${d.note ? '與整頁筆記' : ''}給你。要匯入到你的筆記嗎?(匯入後會加上「來自分享」標籤)`;
+    banner.style.display = 'block';
+    banner.querySelector('.skip').onclick = () => { banner.style.display = 'none'; history.replaceState(null, '', location.href.split('#')[0]); };
+    banner.querySelector('.imp').onclick = async () => {
+      const data = await load();
+      let added = 0;
+      for (const h of d.highlights) {
+        if (data.highlights.some((x) => x.url === PAGE && x.quote === h.quote)) continue;
+        data.highlights.push({ id: uid(), url: PAGE, title: document.title, quote: h.quote, prefix: h.prefix, suffix: h.suffix, comment: h.comment, tags: [...new Set([...h.tags, '來自分享'])], color: h.color, createdAt: Date.now() });
+        added++;
+      }
+      if (d.note || d.tags.length) {
+        const cur = data.pages[PAGE];
+        const note = cur?.note && d.note ? cur.note + '\n\n— 分享的筆記 —\n' + d.note : (cur?.note || d.note);
+        data.pages[PAGE] = { title: document.title, note, tags: [...new Set([...(cur?.tags || []), ...d.tags, '來自分享'])], updatedAt: Date.now() };
+      }
+      await save({ highlights: data.highlights, pages: data.pages });
+      history.replaceState(null, '', location.href.split('#')[0]);
+      const missing = await syncMarks();
+      banner.querySelector('.msg').textContent = `已匯入 ${added} 則標記。` + (missing ? `(${missing} 則在這個頁面找不到對應文字,可能原文已更新)` : '');
+      banner.querySelector('.row').style.display = 'none';
+      setTimeout(() => { banner.style.display = 'none'; banner.querySelector('.row').style.display = ''; }, 5000);
+      side.classList.add('open');
+      renderSide();
+    };
+  }
+
   // ---------- boot ----------
   document.documentElement.appendChild(host);
   [0, 1500, 4000].forEach((ms) => setTimeout(() => syncMarks().then(renderSide), ms));
   api.storage.onChanged.addListener(() => { syncMarks(); renderSide(); });
+  offerImport();
   api.runtime.onMessage.addListener((msg) => { if (msg?.type === 'toggle-sidebar') toggleSide(); });
 })();
