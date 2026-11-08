@@ -25,7 +25,7 @@ function groups() {
     if (!map.has(url)) map.set(url, { url, kind: isPdf(url) ? 'pdf' : 'web', fp: isPdf(url) ? url.slice(4) : '', title: title || url, page: null, hls: [], time: 0 });
     return map.get(url);
   };
-  const tagOk = (tags) => [...activeTags].every((t) => (tags || []).includes(t));
+  const tagOk = (tags) => [...activeTags].every((k) => (tags || []).some((t) => Tags.key(t) === k));
   const hit = (...s) => !q || s.some((x) => (x || '').toLowerCase().includes(q));
 
   for (const h of data.highlights) {
@@ -57,23 +57,23 @@ function groups() {
 }
 
 function renderChips() {
-  const counts = {};
-  const add = (tags) => (tags || []).forEach((t) => (counts[t] = (counts[t] || 0) + 1));
+  const counts = {};   // 以標準化後的 key 分組,顯示第一次出現的寫法
+  const add = (tags) => (tags || []).forEach((t) => { const k = Tags.key(t); if (!k) return; (counts[k] ||= { n: 0, label: Tags.show(t) }).n++; });
   data.highlights.forEach((h) => add(h.tags));
   Object.values(data.pages).forEach((p) => add(p.tags));
   const box = $('chips');
   box.textContent = '';
-  Object.entries(counts).sort((a, b) => b[1] - a[1]).forEach(([t, n]) => {
-    const c = el('button', { className: 'chip' + (activeTags.has(t) ? ' on' : ''), textContent: `#${t} ${n}` });
-    c.onclick = () => { activeTags.has(t) ? activeTags.delete(t) : activeTags.add(t); render(); };
+  Object.entries(counts).sort((a, b) => b[1].n - a[1].n).forEach(([k, { n, label }]) => {
+    const c = el('button', { className: 'chip' + (activeTags.has(k) ? ' on' : ''), textContent: `#${label} ${n}` });
+    c.onclick = () => { activeTags.has(k) ? activeTags.delete(k) : activeTags.add(k); render(); };
     box.append(c);
   });
 }
 
 function tagSpans(tags) {
   return (tags || []).map((t) => {
-    const s = el('span', { className: 'tag', textContent: '#' + t });
-    s.onclick = () => { activeTags.add(t); render(); };
+    const s = el('span', { className: 'tag', textContent: '#' + Tags.show(t) });
+    s.onclick = () => { activeTags.add(Tags.key(t)); render(); };
     return s;
   });
 }
@@ -171,7 +171,8 @@ function renderOverview(gs, list) {
   t.append(el('thead', {}, el('tr', {}, el('th', { textContent: '來源 / 標題' }), el('th', { className: 'num', textContent: '標記' }), el('th', { className: 'num', textContent: '最近' }), el('th', { textContent: '標籤' }))));
   const tb = el('tbody');
   for (const g of gs) {
-    const tags = [...new Set([...(g.page?.tags || []), ...g.hls.flatMap((h) => h.tags || [])])];
+    const seenK = new Set();
+    const tags = [...(g.page?.tags || []), ...g.hls.flatMap((h) => h.tags || [])].filter((t) => { const k = Tags.key(t); if (!k || seenK.has(k)) return false; seenK.add(k); return true; });
     const a = el('a', { href: g.kind === 'pdf' ? viewerUrl(g.fp) : g.url, target: '_blank', rel: 'noopener', textContent: g.title });
     const more = el('button', { className: 'hostbtn', textContent: '看筆記' });
     more.onclick = () => { $('view').value = 'cards'; render(); document.querySelector(`.art[data-url="${CSS.escape(g.url)}"]`)?.scrollIntoView({ block: 'start' }); };
@@ -202,11 +203,11 @@ function toMarkdown() {
   for (const g of groups()) {
     out.push(g.kind === 'pdf' ? `## 📄 ${g.title} (PDF)` : `## [${g.title}](${g.url})`, '');
     if (g.page?.note) out.push(g.page.note.split('\n').map((l) => '> ' + l).join('\n'), '');
-    if (g.page?.tags?.length) out.push(g.page.tags.map((t) => '#' + t).join(' '), '');
+    if (g.page?.tags?.length) out.push(g.page.tags.map((t) => '#' + Tags.show(t)).join(' '), '');
     for (const h of g.hls) {
       out.push(`- ${g.kind === 'pdf' ? `(p.${h.page}) ` : ''}${h.quote.replace(/\n/g, ' ')}`);
       if (h.comment) out.push(`  - 📝 ${h.comment.replace(/\n/g, ' ')}`);
-      if (h.tags?.length) out.push(`  - ${h.tags.map((t) => '#' + t).join(' ')}`);
+      if (h.tags?.length) out.push(`  - ${h.tags.map((t) => '#' + Tags.show(t)).join(' ')}`);
     }
     out.push('');
   }

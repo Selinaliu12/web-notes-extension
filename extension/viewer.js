@@ -6,7 +6,7 @@ const ASSET = (p) => new URL('./pdfjs/' + p, import.meta.url).href;
 const COLORS = { yellow: '#fff176', green: '#a5d6a7', blue: '#90caf9', pink: '#f8bbd0' };
 const $ = (id) => document.getElementById(id);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-const parseTags = (s) => [...new Set(s.split(/[,\s,、]+/).map((t) => t.replace(/^#/, '').trim()).filter(Boolean))];
+const parseTags = Tags.parse;
 const load = () => api.storage.local.get({ highlights: [], pages: {}, pdfs: {} });
 const save = (o) => api.storage.local.set(o);
 

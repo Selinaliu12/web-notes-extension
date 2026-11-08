@@ -10,7 +10,7 @@
   const load = () => api.storage.local.get({ highlights: [], pages: {} });
   const save = (obj) => api.storage.local.set(obj);
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  const parseTags = (s) => [...new Set(s.split(/[,\s,、]+/).map((t) => t.replace(/^#/, '').trim()).filter(Boolean))];
+  const parseTags = Tags.parse;
 
   // ---------- text index & anchoring ----------
   function indexText() {
