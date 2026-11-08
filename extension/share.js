@@ -81,15 +81,16 @@ const Share = (() => {
     const title = heading || (articles.length === 1 ? articles[0].title : '閱讀筆記');
     const parts = [];
     for (const a of articles) {
+      const pdf = a.url.startsWith('pdf:');
       let link = '';
-      try { link = await makeLink(a); } catch {}
+      if (!pdf) { try { link = await makeLink(a); } catch {} }
       const tags = (t) => (t || []).map((x) => `<span class="tag">#${esc(x)}</span>`).join(' ');
       parts.push(`<article>
-  <h2><a href="${esc(safeUrl(a.url))}" target="_blank" rel="noopener noreferrer">${esc(a.title || a.url)}</a></h2>
-  <div class="host">${esc(hostOf(a.url))}${link ? ` · <a href="${esc(link)}" target="_blank" rel="noopener noreferrer">在原文顯示標記(需安裝「網頁筆記」擴充功能)</a>` : ''}</div>
+  <h2>${pdf ? esc(a.title || 'PDF 文獻') : `<a href="${esc(safeUrl(a.url))}" target="_blank" rel="noopener noreferrer">${esc(a.title || a.url)}</a>`}</h2>
+  <div class="host">${pdf ? 'PDF 文獻' : esc(hostOf(a.url))}${link ? ` · <a href="${esc(link)}" target="_blank" rel="noopener noreferrer">在原文顯示標記(需安裝「網頁筆記」擴充功能)</a>` : ''}</div>
   ${a.page?.note ? `<div class="pn"><b>整頁筆記</b>${esc(a.page.note)}${a.page.tags?.length ? `<div class="tags">${tags(a.page.tags)}</div>` : ''}</div>` : ''}
   ${a.highlights.map((h) => `<div class="hl" style="border-color:${COLORS[h.color] || COLORS.yellow}">
-    <p class="q">${esc(h.quote)}</p>
+    <p class="q">${h.page ? `<span class="tag">p.${esc(h.page)}</span> ` : ''}${esc(h.quote)}</p>
     ${h.comment ? `<p class="c">${esc(h.comment)}</p>` : ''}
     ${h.tags?.length ? `<div class="tags">${tags(h.tags)}</div>` : ''}
   </div>`).join('\n  ')}

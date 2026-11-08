@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF 閱讀筆記</title>
+<link rel="stylesheet" href="pdfjs/textlayer.css">
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<header>
+  <button id="openbtn">📄 開啟 PDF</button>
+  <input type="file" id="file" accept="application/pdf,.pdf" hidden>
+  <span id="docname"></span>
+  <span class="sp"></span>
+  <span id="pageind"></span>
+  <button id="zout" title="縮小">−</button><span id="zoomind">100%</span><button id="zin" title="放大">+</button><button id="zfit">適合寬度</button>
+  <label class="keep" title="把 PDF 副本存在本機,之後可從複習頁直接重新開啟"><input type="checkbox" id="keep" checked> 保存副本</label>
+  <button id="sidebtn">☰ 筆記欄</button>
+  <a id="reviewlink" href="review.html" target="_blank">📚 複習頁</a>
+</header>
+<div id="body">
+  <div id="scroller">
+    <div id="pages"></div>
+    <div id="home">
+      <h2>📄 PDF 閱讀筆記</h2>
+      <p>把論文或文獻拖進來(或按上方「開啟 PDF」),直接選取文字標記、寫註解。<br>筆記會和網頁筆記放在同一個複習頁。</p>
+      <div id="authbox" hidden><p id="authmsg"></p><button class="pri" id="authbtn">授權並載入</button></div>
+      <div id="recent"></div>
+    </div>
+  </div>
+  <aside id="side">
+    <h4>文獻筆記</h4>
+    <textarea id="docnote" rows="4" placeholder="這篇文獻的整體心得、研究問題、結論…"></textarea>
+    <input type="text" id="doctags" placeholder="標籤,例如 #保險科技 #論文">
+    <h4>標記 <span id="count"></span></h4>
+    <div id="hllist"></div>
+  </aside>
+</div>
+<div id="drop">放開以匯入 PDF</div>
+<div id="toast"></div>
+<div id="selbtn"><button id="qh">🖍 標記</button><button id="qc">💬 註解</button></div>
+<div id="pop">
+  <div class="quote"></div>
+  <textarea rows="3" placeholder="寫下你的想法、疑問、重點…"></textarea>
+  <input type="text" class="tags" placeholder="標籤,例如:保險科技 ETF">
+  <div class="row"><span id="sws"></span><span class="sp"></span><button class="del">刪除</button><button class="cancel">取消</button><button class="pri save">儲存</button></div>
+</div>
+<script src="pdfstore.js"></script>
+<script type="module" src="viewer.js"></script>
+</body>
+</html>

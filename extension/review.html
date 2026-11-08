@@ -37,6 +37,17 @@
   .meta .del:hover { color: #d93025; }
   .empty { text-align: center; color: var(--mut); padding: 60px 0; }
   mark { background: #fff176; color: #000; border-radius: 3px; }
+  .badge { font-size: 11px; background: var(--acc); color: #fff; border-radius: 999px; padding: 0 8px; margin-right: 6px; vertical-align: middle; }
+  .badge.web { background: var(--mut); }
+  .pglink { color: var(--acc); text-decoration: none; }
+  .hostbtn { border: 0; background: none; color: var(--acc); cursor: pointer; font: inherit; padding: 0; margin-left: 8px; }
+  .hostbtn.warn { color: #d93025; }
+  table.ov { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; font-size: 14px; }
+  table.ov th { text-align: left; font-size: 12px; color: var(--mut); padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  table.ov td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.ov tr:last-child td { border-bottom: 0; }
+  table.ov a { color: inherit; text-decoration: none; } table.ov a:hover { color: var(--acc); text-decoration: underline; }
+  table.ov .num { text-align: center; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -44,6 +55,8 @@
   <h1>📚 複習筆記</h1>
   <div class="bar">
     <input type="search" id="q" placeholder="搜尋標記文字、註解、標題…">
+    <select id="src"><option value="all">全部來源</option><option value="web">網頁</option><option value="pdf">PDF 文獻</option></select>
+    <select id="view"><option value="cards">卡片檢視</option><option value="overview">總覽(已讀清單)</option></select>
     <select id="sort"><option value="new">最新在前</option><option value="old">最舊在前</option></select>
     <button id="share" disabled>📤 分享所選 (0)</button>
     <button id="export">匯出 Markdown</button>
@@ -56,6 +69,7 @@
   <div id="list"></div>
 </div>
 <script src="share.js"></script>
+<script src="pdfstore.js"></script>
 <script src="review.js"></script>
 </body>
 </html>

@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "網頁筆記",
-  "version": "0.2.0",
-  "description": "在任何網頁上螢光標記、寫註解與整頁筆記,之後集中複習。資料只存在本機。",
+  "version": "0.3.0",
+  "description": "在任何網頁或 PDF 上螢光標記、寫註解與整頁筆記,之後集中複習。資料只存在本機。",
   "permissions": ["storage", "activeTab"],
+  "optional_host_permissions": ["<all_urls>"],
   "action": {
     "default_title": "網頁筆記",
     "default_popup": "popup.html",
