@@ -39,7 +39,13 @@
 </div>
 <div id="drop">放開以匯入 PDF</div>
 <div id="toast"></div>
-<div id="selbtn"><button id="qh">🖍 標記</button><button id="qc">💬 註解</button></div>
+<div id="selbtn"><button id="qh">🖍 標記</button><button id="qc">💬 註解</button><button id="qt">🌐 翻譯</button></div>
+<div id="tr">
+  <div class="row" style="margin:0 0 8px"><select id="trlang" title="翻譯成"></select><span class="sp"></span><button id="trclose" class="xb">×</button></div>
+  <div class="quote" id="trsrc"></div>
+  <div id="trout" class="msg"></div>
+  <div class="row"><span class="sp"></span><button id="trcopy" disabled>複製</button><button class="pri" id="trsave" disabled>存成註解</button></div>
+</div>
 <div id="pop">
   <div class="quote"></div>
   <textarea rows="3" placeholder="寫下你的想法、疑問、重點…"></textarea>

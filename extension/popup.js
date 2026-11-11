@@ -34,3 +34,11 @@ document.getElementById('review').onclick = async () => {
   await api.tabs.create({ url: api.runtime.getURL('review.html') });
   window.close();
 };
+
+// 使用者回饋入口：改成自己的 Google 表單網址也可以
+const FEEDBACK_URL = 'https://github.com/Selinaliu12/web-notes-extension/issues/new';
+document.getElementById('feedback').onclick = async (e) => {
+  e.preventDefault();
+  await api.tabs.create({ url: FEEDBACK_URL });
+  window.close();
+};

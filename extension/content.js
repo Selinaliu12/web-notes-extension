@@ -175,13 +175,26 @@
   .item .c { font-size: 13px; margin-top: 4px; color: var(--mut); white-space: pre-wrap; }
   .tag { display: inline-block; font-size: 11px; color: var(--acc); margin-right: 6px; }
   .empty { color: var(--mut); font-size: 13px; }
+  .tr { position: fixed; z-index: 2147483647; display: none; width: 320px; padding: 12px; border-radius: 12px; background: var(--bg);
+        border: 1px solid var(--line); box-shadow: 0 8px 30px #0003; }
+  .tr .trhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .tr select { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--soft); color: var(--fg); }
+  .tr .trout { font-size: 14px; white-space: pre-wrap; max-height: 40vh; overflow: auto; }
+  .tr .trout.msg { color: var(--mut); font-size: 13px; }
+  .btn[disabled] { opacity: .4; cursor: default; }
   .banner { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: none; max-width: min(560px, 92vw); padding: 12px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 8px 30px #0004; font-size: 14px; }
   .banner .row { margin-top: 8px; }
   .x { border: 0; background: none; color: var(--mut); font-size: 18px; }
 </style>
 <div class="ui">
   <button class="fab" title="網頁筆記">✎</button>
-  <div class="selbtn"><button class="qh">🖍 標記</button><button class="qc">💬 註解</button></div>
+  <div class="selbtn"><button class="qh">🖍 標記</button><button class="qc">💬 註解</button><button class="qt">🌐 翻譯</button></div>
+  <div class="tr">
+    <div class="trhead"><select class="trlang" title="翻譯成"></select><span class="sp"></span><button class="x trclose">×</button></div>
+    <div class="quote trsrc"></div>
+    <div class="trout msg"></div>
+    <div class="row"><span class="sp"></span><button class="btn trcopy" disabled>複製</button><button class="btn pri trsave" disabled>存成註解</button></div>
+  </div>
   <div class="pop">
     <div class="quote"></div>
     <textarea rows="3" placeholder="寫下你的想法、疑問、重點…"></textarea>
@@ -290,7 +303,7 @@
       if (!s) { selbtn.style.display = 'none'; return; }
       pending = s;
       selbtn.style.display = 'block';
-      placeNear(selbtn, s.rect, 150, 40);
+      placeNear(selbtn, s.rect, 240, 40);
     }, 10);
   };
   document.addEventListener('mouseup', checkSelection);
@@ -306,8 +319,90 @@
   };
   selbtn.querySelector('.qc').onclick = () => pending && openEditor('new', pending.rect, { sel: pending, quote: pending.quote });
 
-  document.addEventListener('mousedown', (e) => { if (!inUI(e) && !e.target.closest?.('mark.fn-hl')) closeEditor(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeEditor(); });
+  // ---------- translate (Chrome's on-device Translator API: text never leaves the browser) ----------
+  const LANGS = [['zh-Hant', '繁體中文'], ['zh', '简体中文'], ['en', 'English'], ['ja', '日本語'], ['ko', '한국어'],
+                 ['es', 'Español'], ['fr', 'Français'], ['de', 'Deutsch']];
+  const tr = $('.tr'), trOut = tr.querySelector('.trout'), trLang = tr.querySelector('.trlang');
+  const trCopy = tr.querySelector('.trcopy'), trSave = tr.querySelector('.trsave');
+  LANGS.forEach(([v, n]) => trLang.appendChild(new Option(n, v)));
+  let trTarget = 'zh-Hant', trText = '', trResult = '', trSel = null, trRun = 0;
+  api.storage.local.get({ translateTo: 'zh-Hant' }).then((v) => {
+    if (LANGS.some(([c]) => c === v.translateTo)) trTarget = v.translateTo;
+    trLang.value = trTarget;
+  });
+
+  const closeTr = () => { tr.style.display = 'none'; trRun++; };
+  const trShow = (msg, result = '') => {
+    trResult = result;
+    trOut.textContent = msg;
+    trOut.classList.toggle('msg', !result);
+    trCopy.disabled = trSave.disabled = !result;
+  };
+  const guessLang = (t) => /[぀-ヿ]/.test(t) ? 'ja' : /[가-힯]/.test(t) ? 'ko' : /[一-鿿]/.test(t) ? 'zh' : 'en';
+  async function detectLang(text) {
+    try {
+      if (globalThis.LanguageDetector) {
+        const d = await LanguageDetector.create();
+        const top = (await d.detect(text))[0];
+        if (top && top.detectedLanguage && top.detectedLanguage !== 'und') return top.detectedLanguage;
+      }
+    } catch {}
+    return guessLang(text);
+  }
+
+  async function runTranslate() {
+    const run = ++trRun;
+    const stale = () => run !== trRun;
+    if (!globalThis.Translator) return trShow('這個頁面無法使用內建翻譯(需要 Chrome 138 以上,且網頁網址為 https)。');
+    trShow('翻譯中…');
+    try {
+      const source = await detectLang(trText);
+      if (stale()) return;
+      const base = (l) => l.split('-')[0];
+      if (source === trTarget || (base(source) === base(trTarget) && base(source) !== 'zh')) return trShow('原文已經是這個語言了,請在上方改選其他語言。');
+      const pair = { sourceLanguage: source, targetLanguage: trTarget };
+      const avail = await Translator.availability(pair);
+      if (stale()) return;
+      if (avail === 'unavailable') return trShow(`Chrome 目前不支援「${source} → ${trTarget}」的翻譯。`);
+      if (avail !== 'available') trShow('正在下載語言包(第一次使用需要一點時間)…');
+      const t = await Translator.create({
+        ...pair,
+        monitor(m) { m.addEventListener('downloadprogress', (e) => { if (!stale()) trShow(`正在下載語言包… ${Math.round(e.loaded * 100)}%`); }); },
+      });
+      const out = await t.translate(trText);
+      if (!stale()) trShow(out, out);
+    } catch (err) {
+      if (!stale()) trShow('翻譯失敗:' + (err?.message || err));
+    }
+  }
+
+  function openTranslate(s) {
+    closeEditor();
+    selbtn.style.display = 'none';
+    trSel = s;
+    trText = s.quote.length > 3000 ? s.quote.slice(0, 3000) : s.quote;
+    tr.querySelector('.trsrc').textContent = s.quote;
+    trLang.value = trTarget;
+    tr.style.display = 'block';
+    placeNear(tr, s.rect, 320, 220);
+    runTranslate();
+  }
+  trLang.onchange = () => { trTarget = trLang.value; api.storage.local.set({ translateTo: trTarget }); runTranslate(); };
+  tr.querySelector('.trclose').onclick = closeTr;
+  trCopy.onclick = async () => {
+    try { await navigator.clipboard.writeText(trResult); trCopy.textContent = '已複製'; } catch { trCopy.textContent = '複製失敗'; }
+    setTimeout(() => { trCopy.textContent = '複製'; }, 1200);
+  };
+  trSave.onclick = () => {
+    const s = trSel, comment = trResult;
+    if (!s || !comment) return;
+    closeTr();
+    openEditor('new', s.rect, { sel: s, quote: s.quote, comment });
+  };
+  selbtn.querySelector('.qt').onclick = () => pending && openTranslate(pending);
+
+  document.addEventListener('mousedown', (e) => { if (!inUI(e) && !e.target.closest?.('mark.fn-hl')) { closeEditor(); closeTr(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeEditor(); closeTr(); } });
 
   // click existing highlight -> edit
   document.addEventListener('click', async (e) => {

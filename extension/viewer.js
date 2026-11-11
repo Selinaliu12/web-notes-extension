@@ -306,7 +306,7 @@ pop.querySelector('.del').onclick = async () => {
 const checkSelection = () => setTimeout(() => {
   const s = captureSelection();
   if (!s) { selbtn.style.display = 'none'; return; }
-  pending = s; selbtn.style.display = 'flex'; placeNear(selbtn, s.bounds, 150, 40);
+  pending = s; selbtn.style.display = 'flex'; placeNear(selbtn, s.bounds, 240, 40);
 }, 10);
 $('scroller').addEventListener('mouseup', checkSelection);
 document.addEventListener('keyup', (e) => { if (e.key === 'Shift' || e.key.startsWith('Arrow')) checkSelection(); });
@@ -314,8 +314,85 @@ $('scroller').addEventListener('scroll', () => { selbtn.style.display = 'none'; 
 selbtn.addEventListener('mousedown', (e) => e.preventDefault());
 $('qh').onclick = async () => { if (!pending) return; selbtn.style.display = 'none'; await createHighlight(pending, '', [], 'yellow'); };
 $('qc').onclick = () => pending && openEditor('new', pending.bounds, { sel: pending, quote: pending.quote });
-document.addEventListener('mousedown', (e) => { if (!pop.contains(e.target) && !selbtn.contains(e.target)) closeEditor(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeEditor(); });
+
+// ---------- translate (Chrome's on-device Translator API: text never leaves the browser) ----------
+const LANGS = [['zh-Hant', '繁體中文'], ['zh', '简体中文'], ['en', 'English'], ['ja', '日本語'], ['ko', '한국어'],
+               ['es', 'Español'], ['fr', 'Français'], ['de', 'Deutsch']];
+const trBox = $('tr'), trOut = $('trout'), trLang = $('trlang'), trCopy = $('trcopy'), trSave = $('trsave');
+LANGS.forEach(([v, n]) => trLang.append(new Option(n, v)));
+let trTarget = 'zh-Hant', trText = '', trResult = '', trSel = null, trRun = 0;
+api.storage.local.get({ translateTo: 'zh-Hant' }).then((v) => {
+  if (LANGS.some(([c]) => c === v.translateTo)) trTarget = v.translateTo;
+  trLang.value = trTarget;
+});
+const closeTr = () => { trBox.style.display = 'none'; trRun++; };
+const trShow = (msg, result = '') => {
+  trResult = result; trOut.textContent = msg; trOut.classList.toggle('msg', !result);
+  trCopy.disabled = trSave.disabled = !result;
+};
+const guessLang = (t) => /[\u3040-\u30ff]/.test(t) ? 'ja' : /[\uac00-\ud7af]/.test(t) ? 'ko' : /[\u4e00-\u9fff]/.test(t) ? 'zh' : 'en';
+async function detectLang(text) {
+  try {
+    if (globalThis.LanguageDetector) {
+      const top = (await (await LanguageDetector.create()).detect(text))[0];
+      if (top && top.detectedLanguage && top.detectedLanguage !== 'und') return top.detectedLanguage;
+    }
+  } catch {}
+  return guessLang(text);
+}
+async function runTranslate() {
+  const run = ++trRun, stale = () => run !== trRun;
+  if (!globalThis.Translator) return trShow('此瀏覽器不支援內建翻譯(需要 Chrome 138 以上)。');
+  trShow('翻譯中…');
+  try {
+    const source = await detectLang(trText);
+    if (stale()) return;
+    const base = (l) => l.split('-')[0];
+    if (source === trTarget || (base(source) === base(trTarget) && base(source) !== 'zh')) return trShow('原文已經是這個語言了,請在上方改選其他語言。');
+    const pair = { sourceLanguage: source, targetLanguage: trTarget };
+    const avail = await Translator.availability(pair);
+    if (stale()) return;
+    if (avail === 'unavailable') return trShow(`Chrome 目前不支援「${source} → ${trTarget}」的翻譯。`);
+    if (avail !== 'available') trShow('正在下載語言包(第一次使用需要一點時間)…');
+    const t = await Translator.create({
+      ...pair,
+      monitor(m) { m.addEventListener('downloadprogress', (e) => { if (!stale()) trShow(`正在下載語言包… ${Math.round(e.loaded * 100)}%`); }); },
+    });
+    const out = await t.translate(trText);
+    if (!stale()) trShow(out, out);
+  } catch (err) {
+    if (!stale()) trShow('翻譯失敗:' + (err?.message || err));
+  }
+}
+function openTranslate(s) {
+  closeEditor(); selbtn.style.display = 'none';
+  trSel = s;
+  trText = s.quote.length > 3000 ? s.quote.slice(0, 3000) : s.quote;
+  $('trsrc').textContent = s.quote;
+  trLang.value = trTarget;
+  trBox.style.display = 'block';
+  placeNear(trBox, s.bounds, 320, 220);
+  runTranslate();
+}
+trLang.onchange = () => { trTarget = trLang.value; api.storage.local.set({ translateTo: trTarget }); runTranslate(); };
+$('trclose').onclick = closeTr;
+trCopy.onclick = async () => {
+  try { await navigator.clipboard.writeText(trResult); trCopy.textContent = '已複製'; } catch { trCopy.textContent = '複製失敗'; }
+  setTimeout(() => { trCopy.textContent = '複製'; }, 1200);
+};
+trSave.onclick = () => {
+  const s = trSel, comment = trResult;
+  if (!s || !comment) return;
+  closeTr();
+  openEditor('new', s.bounds, { sel: s, quote: s.quote, comment });
+};
+$('qt').onclick = () => pending && openTranslate(pending);
+
+document.addEventListener('mousedown', (e) => {
+  if (!trBox.contains(e.target) && !selbtn.contains(e.target)) closeTr();
+  if (!pop.contains(e.target) && !selbtn.contains(e.target)) closeEditor();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeEditor(); closeTr(); } });
 
 $('scroller').addEventListener('click', (e) => {
   if (!getSelection().isCollapsed) return;

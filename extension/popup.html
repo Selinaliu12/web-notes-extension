@@ -9,6 +9,8 @@
   button { width: 100%; padding: 9px 10px; margin-bottom: 6px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
   button:hover { border-color: var(--acc); }
   p { margin: 6px 2px 0; font-size: 12px; color: var(--mut); }
+  a.fb { display: block; margin: 8px 2px 0; font-size: 12px; color: var(--acc); text-decoration: none; }
+  a.fb:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -17,6 +19,7 @@
   <button id="curpdf" hidden>📑 用網頁筆記開啟目前這份 PDF</button>
   <button id="review">📚 開啟複習頁</button>
   <p id="msg"></p>
+  <a class="fb" id="feedback" href="#">💬 回報問題或給建議</a>
   <script src="popup.js"></script>
 </body>
 </html>

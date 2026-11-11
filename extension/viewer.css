@@ -58,3 +58,10 @@ textarea:focus, input[type=text]:focus { border-color: var(--acc); }
 .sw { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; padding: 0; margin-right: 4px; }
 .sw.on { border-color: var(--fg); }
 #pop .del { color: #d93025; }
+#tr { position: fixed; z-index: 45; display: none; width: 320px; padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 8px 30px #0003; }
+#tr .quote { font-size: 12px; color: var(--mut); border-left: 3px solid var(--line); padding-left: 8px; margin-bottom: 8px; max-height: 3.2em; overflow: hidden; }
+#tr select { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--soft); color: var(--fg); }
+#tr .xb { border: 0; background: none; color: var(--mut); font-size: 18px; padding: 0 4px; }
+#trout { white-space: pre-wrap; max-height: 40vh; overflow: auto; }
+#trout.msg { color: var(--mut); font-size: 13px; }
+#tr button[disabled] { opacity: .4; cursor: default; }
